@@ -3,7 +3,7 @@ det = {} # 限定词
 rule = {} # 规则库
 know = {} # 知识库
 pun = ['，', '。', '；', '\n'] # 标点
-typ = ['动物', '类', '界', '门', '纲', '目', '科', '属', '种']
+typ = ['的', '动物', '类', '界', '门', '纲', '目', '科', '属', '种']
 allname = {} # 全名
 
 def load(n:str, m:dict):
@@ -17,12 +17,13 @@ def load(n:str, m:dict):
 def query(s:str, m:dict):
     for r, n in know.items():
         # rule
-        if s.find(r) != -1:
-            for k, v in n.items():
-                m[k] = v
-            s = s.replace(r, '')
+        if r!='类人' and r!='像人':
+            if s.find(r) != -1:
+                for k, v in n.items():
+                    m[k] = v
+                m[r] = 1
+                s = s.replace(r, '')
     for r, n in rule.items():
-        n = r
         # pre - det - rule
         for i in pre:
             for j in det:
@@ -55,21 +56,27 @@ def query(s:str, m:dict):
 
 def parse(s:str):
     t = s.split('是')
-    a = t[0]
-    b = t[1]
-    for i in pun:
-        if b.find(i) != -1:
-            b = b.replace(i, '')
-    l = {}
-    query(a, l)
-    c = b.replace('动物', '').replace('类', '')
-    allname[c] = b
-    return l, c
+    if len(t) > 1:
+        a = t[0]
+        b = t[1]
+        for i in pun:
+            if b.find(i) != -1:
+                b = b.replace(i, '')
+        l = {}
+        query(a, l)
+        c = b.replace('动物', '').replace('类', '').replace('的', '')
+        allname[c] = b
+        return l, c
+    return {}, ''
 
 def learn(n:str):
     with open(n, 'r', encoding='utf-8') as f:
         for i in f.readlines():
             que, ans = parse(i)
+            # print(que, ans)
+            if not len(ans):
+                continue
+            que[ans] = 1
             if know.get(ans, False):
                 know[ans].update(que)
             else:
@@ -91,8 +98,6 @@ def main():
     load('限定词.txt', det)
     load('规则库.txt', rule)
     learn('知识库.txt')
-    # for i, j in know.items():
-    #     print(i, j)
     while True:
         print('请输入查询条件，以“停止”结束：')
         q = input()
@@ -100,26 +105,39 @@ def main():
             break
         l = {}
         query(q, l)
+        print('查询特征条件：'+q+'。')
         flag = False
         for k, v in know.items():
             if len(l.items()-v.items()):
                 flag = True
         if not flag:
             print('未知特征。')
+            print()
             continue
-        t = []
-        s = []
+        t = set()
+        s = set()
+        for k, v in l.items():
+            a = allname.get(k, k)
+            if type(a)==str and a!='人类' and a!='类人猿':
+                for i in typ:
+                    if a.find(i) != -1:
+                        if a.find('的') != -1:
+                            a = a.replace('的', '动物')
+                        t.add(a)
         for k, v in know.items():
             if not len(l.items()-v.items()):
                 a = allname[k]
                 flag = False
-                for i in typ:
-                    if a.find(i) != -1:
-                        t.append(a)
-                        flag = True
-                        break
+                if a!='人类' and a!='类人猿':
+                    for i in typ:
+                        if a.find(i) != -1:
+                            if a.find('的') != -1:
+                                a = a.replace('的', '动物')
+                            t.add(a)
+                            flag = True
+                            break
                 if not flag:
-                    s.append(a)
+                    s.add(a)
         flag = False
         if len(t):
             print('它可能的类型：', end='')
@@ -131,6 +149,7 @@ def main():
             flag = True
         if not flag:
             print('未知物种。')
+        print()
 
 if __name__ == '__main__':
     main()
